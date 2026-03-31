@@ -516,13 +516,13 @@ function renderGrid() {
     return;
   }
 
-  el.innerHTML = filtered.map((c, i) => {
+  el.innerHTML = filtered.map((c) => {
     const level = stockLevel(c.current_stock, c.needed_stock);
     const sel = selectedId === c.container_id ? 'selected' : '';
     // Use events from detail if it's this container, otherwise empty sparkline
     const evts = (selectedId === c.container_id && detailEvents.length > 0) ? detailEvents : [];
     return `
-      <div class="card ${levelClass[level]} ${sel} fade-up" style="animation-delay:${i * 40}ms"
+      <div class="card ${levelClass[level]} ${sel}"
            onclick="selectContainer(${c.container_id})">
         <div class="card-top">
           <span class="card-bin">BIN ${String(c.container_id).padStart(2, '0')}</span>
