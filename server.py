@@ -311,6 +311,5 @@ def api_tare(cid):
 
 if __name__ == "__main__":
     database_init()
-    seed_test_data()
-    print("\n  AIM Dashboard running at http://localhost:5000\n")
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    print("\n  AIM Dashboard running at http://localhost:3000\n")
+    app.run(host="0.0.0.0", port=3000, debug=False)
