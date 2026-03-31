@@ -586,12 +586,50 @@ def api_adjust_stock(cid):
 
 @app.route("/api/containers/<int:cid>/tare", methods=["POST"])
 def api_tare(cid):
+    """
+    Pi-side tare: grabs the most recent raw weight reading from sensor_events
+    and stores it as empty_bin_weight_g in container_calibration.
+
+    This means the Pi owns the zero offset — if the ESP32 reboots, the Pi
+    still knows what "empty" looks like and keeps interpreting weights correctly.
+    """
     try:
-        driver = CANDriver(channel=CAN_CHANNEL, bitrate=CAN_BITRATE)
-        driver.connect()
-        driver.tare_bin(cid)
-        driver.disconnect()
-        return jsonify({"status": "tare_sent", "container_id": cid})
+        with get_db() as conn:
+            cur = conn.cursor()
+
+            # Get the latest raw weight for this container
+            cur.execute("""
+                SELECT raw_weight_g FROM sensor_events
+                WHERE container_id = ?
+                ORDER BY created_at DESC LIMIT 1
+            """, (cid,))
+            row = cur.fetchone()
+
+            if not row:
+                return jsonify({"status": "tare_failed",
+                                "error": "no sensor readings yet for this bin"}), 400
+
+            tare_weight = row["raw_weight_g"]
+
+            # Upsert the calibration row with the new empty_bin_weight_g
+            cur.execute("""
+                INSERT INTO container_calibration
+                    (container_id, empty_bin_weight_g, scale_factor,
+                     min_detectable_weight_g, rounding_mode)
+                VALUES (?, ?, 1.0, 2.0, 'round')
+                ON CONFLICT(container_id) DO UPDATE SET
+                    empty_bin_weight_g = ?
+            """, (cid, tare_weight, tare_weight))
+            conn.commit()
+
+            # Log the tare as a sensor event for the history
+            record_sensor_event(cid, tare_weight, "ok", "tare_confirmed",
+                                note=f"pi-side tare — empty_bin_weight_g set to {tare_weight:.2f}g")
+
+            logger.info("Tare: bin %d empty_bin_weight_g = %.2f g", cid, tare_weight)
+            return jsonify({"status": "tare_ok", "container_id": cid,
+                            "empty_bin_weight_g": round(tare_weight, 2)})
+
     except Exception as e:
         return jsonify({"status": "tare_failed", "error": str(e)}), 500
 
