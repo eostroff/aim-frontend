@@ -294,33 +294,14 @@ class CANDriver:
         return self._parse(msg)
 
     def _parse(self, msg):
-        if len(msg.data) < 7:
+        if len(msg.data) < 5:
             return None
         bin_id = msg.data[0]
         weight_g = struct.unpack('f', bytes(msg.data[1:5]))[0]
-        status = msg.data[5]
-        tare = msg.data[6] if len(msg.data) > 6 else 0
         return {
             "bin_id": bin_id,
             "weight_g": round(weight_g, 2),
-            "status": STATUS_MAP.get(status, "unknown"),
-            "tare_flag": TARE_MAP.get(tare, "none"),
         }
-
-    def send_command(self, bin_id, tare=False, led=LED_OFF, buzzer=BUZZER_OFF):
-        if not self.bus:
-            raise RuntimeError("CAN bus not connected.")
-        import can
-        data = [bin_id, 0x01 if tare else 0x00, led, buzzer, 0, 0, 0, 0]
-        msg = can.Message(arbitration_id=PI_TO_STM32_ID + bin_id,
-                          data=data, is_extended_id=False)
-        self.bus.send(msg)
-
-    def tare_bin(self, bin_id):
-        self.send_command(bin_id, tare=True)
-
-    def set_led(self, bin_id, state):
-        self.send_command(bin_id, led=state)
 
     def __enter__(self):
         self.connect()
@@ -332,21 +313,20 @@ class CANDriver:
 
 # ═════════════════════════════════════════════════════════════════════════════
 # CAN → DATABASE BRIDGE
-# (mirrors aim_central/logic/CanDatabaseBridge.py)
+# Simple: receive CAN message → record raw weight → update stock count
 # ═════════════════════════════════════════════════════════════════════════════
 
 class CanDatabaseBridge:
     def __init__(self, can_channel='can0', bitrate=500000,
-                 publish_led_feedback=True, stability_window=3,
-                 stability_tolerance_g=2.0):
+                 stability_window=3, stability_tolerance_g=2.0):
         self.driver = CANDriver(channel=can_channel, bitrate=bitrate)
-        self.publish_led_feedback = publish_led_feedback
         self.stability_window = max(1, int(stability_window))
         self.stability_tolerance_g = float(stability_tolerance_g)
         self._weight_windows = defaultdict(lambda: deque(maxlen=self.stability_window))
         self.logger = logging.getLogger("CanDatabaseBridge")
 
     def _stable_weight(self, bin_id, latest_weight_g):
+        """Average the last N readings if they're within tolerance."""
         window = self._weight_windows[bin_id]
         window.append(float(latest_weight_g))
         if len(window) < self.stability_window:
@@ -356,11 +336,6 @@ class CanDatabaseBridge:
             return None
         return sum(window) / len(window)
 
-    def _stock_level_to_led(self, level):
-        if level == "Red": return LED_RED
-        if level == "Yellow": return LED_YELLOW
-        return LED_GREEN
-
     def process_one_message(self, timeout=1.0):
         msg = self.driver.receive(timeout=timeout)
         if msg is None:
@@ -368,46 +343,29 @@ class CanDatabaseBridge:
 
         bin_id = msg["bin_id"]
         weight_g = msg["weight_g"]
-        status = msg["status"]
-        tare_flag = msg["tare_flag"]
 
-        if status == "not_tared":
-            self._weight_windows[bin_id].clear()
-            record_sensor_event(bin_id, weight_g, status, "rejected_not_tared",
-                                note="bin not tared since boot")
-            return True
+        # Always record the raw weight
+        record_sensor_event(
+            container_id=bin_id,
+            raw_weight_g=weight_g,
+            sensor_status="ok",
+            decision="received",
+        )
 
-        if status == "error":
-            record_sensor_event(bin_id, weight_g, status, "rejected_error",
-                                note="sensor reported hardware error")
-            return True
-
-        if tare_flag == "success":
-            self._weight_windows[bin_id].clear()
-            record_sensor_event(bin_id, weight_g, status, "tare_confirmed",
-                                note="tare success — stability window reset")
-            return True
-
+        # Check stability window before updating stock
         stable_weight_g = self._stable_weight(bin_id, weight_g)
-        if stable_weight_g is None:
-            record_sensor_event(bin_id, weight_g, status, "deferred_unstable",
-                                note="collecting stability window or spread too high")
-            return True
-
-        updated = update_stock_from_weight(bin_id, stable_weight_g)
-        if not updated:
-            record_sensor_event(bin_id, weight_g, status, "failed_update",
-                                note="update_stock_from_weight returned False")
-            return True
-
-        record_sensor_event(bin_id, weight_g, status, "accepted",
-                            net_weight_g=stable_weight_g,
-                            computed_stock=get_stock(bin_id),
-                            note=f"stable window={self.stability_window}")
-
-        if self.publish_led_feedback:
-            level = get_stock_level(bin_id)
-            self.driver.set_led(bin_id, self._stock_level_to_led(level))
+        if stable_weight_g is not None:
+            updated = update_stock_from_weight(bin_id, stable_weight_g)
+            if updated:
+                record_sensor_event(
+                    container_id=bin_id,
+                    raw_weight_g=weight_g,
+                    sensor_status="ok",
+                    decision="accepted",
+                    net_weight_g=stable_weight_g,
+                    computed_stock=get_stock(bin_id),
+                    note=f"stable avg over {self.stability_window} readings",
+                )
 
         return True
 
@@ -558,6 +516,27 @@ def api_stock_level(cid):
                 level = "Green"
             return jsonify({"container_id": cid, "level": level,
                             "current_stock": current, "needed_stock": needed})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/raw-weight/<int:cid>")
+def api_raw_weight(cid):
+    """Get the latest raw weight reading for a container."""
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT raw_weight_g, created_at FROM sensor_events
+                WHERE container_id = ?
+                ORDER BY created_at DESC LIMIT 1
+            """, (cid,))
+            row = cur.fetchone()
+            if not row:
+                return jsonify({"container_id": cid, "raw_weight_g": None})
+            return jsonify({"container_id": cid,
+                            "raw_weight_g": row["raw_weight_g"],
+                            "timestamp": row["created_at"]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
