@@ -613,6 +613,154 @@ def api_tare(cid):
         return jsonify({"status": "tare_failed", "error": str(e)}), 500
 
 
+@app.route("/api/containers/<int:cid>/config", methods=["POST"])
+def api_update_config(cid):
+    """
+    Update item_name, item_weight, and needed_stock for a container.
+    POST { "item_name": "Bandages", "item_weight": 18.0, "needed_stock": 20 }
+    """
+    data = request.get_json(force=True)
+    item_name = data.get("item_name", "").strip()
+    item_weight = data.get("item_weight")
+    needed_stock = data.get("needed_stock")
+
+    if not item_name:
+        return jsonify({"error": "item_name required"}), 400
+    if item_weight is None or float(item_weight) <= 0:
+        return jsonify({"error": "item_weight must be > 0"}), 400
+    if needed_stock is None or int(needed_stock) < 1:
+        return jsonify({"error": "needed_stock must be >= 1"}), 400
+
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+
+            # Check container exists
+            cur.execute("SELECT item_id FROM containers WHERE container_id = ?", (cid,))
+            row = cur.fetchone()
+            if not row:
+                return jsonify({"error": "container not found"}), 404
+
+            item_id = row["item_id"]
+
+            # Update item name and weight
+            cur.execute("UPDATE items SET item_name = ?, item_weight = ? WHERE item_id = ?",
+                        (item_name, float(item_weight), item_id))
+
+            # Update needed_stock
+            cur.execute("UPDATE containers SET needed_stock = ? WHERE container_id = ?",
+                        (int(needed_stock), cid))
+
+            conn.commit()
+            return jsonify({"status": "ok", "container_id": cid})
+    except sqlite3.IntegrityError:
+        return jsonify({"error": "item name already exists on another bin"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/containers/add", methods=["POST"])
+def api_add_container():
+    """
+    Add a new bin.
+    POST { "container_id": 2, "item_name": "Bandages", "item_weight": 18.0, "needed_stock": 20 }
+    """
+    data = request.get_json(force=True)
+    cid = data.get("container_id")
+    item_name = data.get("item_name", "").strip()
+    item_weight = data.get("item_weight")
+    needed_stock = data.get("needed_stock")
+
+    if cid is None:
+        return jsonify({"error": "container_id required"}), 400
+    if not item_name:
+        return jsonify({"error": "item_name required"}), 400
+    if item_weight is None or float(item_weight) <= 0:
+        return jsonify({"error": "item_weight must be > 0"}), 400
+    if needed_stock is None or int(needed_stock) < 1:
+        return jsonify({"error": "needed_stock must be >= 1"}), 400
+
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+
+            # Check if container_id already exists
+            cur.execute("SELECT container_id FROM containers WHERE container_id = ?", (int(cid),))
+            if cur.fetchone():
+                return jsonify({"error": f"bin {cid} already exists"}), 400
+
+            # Insert or find item
+            cur.execute("SELECT item_id FROM items WHERE item_name = ?", (item_name,))
+            row = cur.fetchone()
+            if row:
+                item_id = row["item_id"]
+                cur.execute("UPDATE items SET item_weight = ? WHERE item_id = ?",
+                            (float(item_weight), item_id))
+            else:
+                cur.execute("INSERT INTO items (item_name, item_weight) VALUES (?, ?)",
+                            (item_name, float(item_weight)))
+                item_id = cur.lastrowid
+
+            # Insert container
+            cur.execute("INSERT INTO containers (container_id, item_id, needed_stock, current_stock) VALUES (?, ?, ?, 0)",
+                        (int(cid), item_id, int(needed_stock)))
+
+            # Insert default calibration
+            cur.execute("""INSERT OR IGNORE INTO container_calibration
+                (container_id, empty_bin_weight_g, scale_factor, min_detectable_weight_g, rounding_mode)
+                VALUES (?, 0.0, 1.0, 2.0, 'round')""", (int(cid),))
+
+            conn.commit()
+            return jsonify({"status": "ok", "container_id": int(cid)})
+    except sqlite3.IntegrityError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/containers/<int:cid>", methods=["DELETE"])
+def api_delete_container(cid):
+    """Delete a bin and its sensor events and calibration."""
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM sensor_events WHERE container_id = ?", (cid,))
+            cur.execute("DELETE FROM container_calibration WHERE container_id = ?", (cid,))
+            cur.execute("DELETE FROM containers WHERE container_id = ?", (cid,))
+            conn.commit()
+            return jsonify({"status": "ok", "deleted": cid})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/calibration/<int:cid>", methods=["POST"])
+def api_update_calibration(cid):
+    """
+    Update calibration params from the UI.
+    POST { "scale_factor": 1.0, "min_detectable_weight_g": 2.0, "rounding_mode": "round" }
+    """
+    data = request.get_json(force=True)
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM container_calibration WHERE container_id = ?", (cid,))
+            row = cur.fetchone()
+            if not row:
+                return jsonify({"error": "no calibration for this bin"}), 404
+
+            sf = float(data.get("scale_factor", row["scale_factor"]))
+            md = float(data.get("min_detectable_weight_g", row["min_detectable_weight_g"]))
+            rm = data.get("rounding_mode", row["rounding_mode"])
+
+            cur.execute("""UPDATE container_calibration
+                SET scale_factor = ?, min_detectable_weight_g = ?, rounding_mode = ?
+                WHERE container_id = ?""", (sf, md, rm, cid))
+            conn.commit()
+            return jsonify({"status": "ok", "container_id": cid})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ═════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ═════════════════════════════════════════════════════════════════════════════

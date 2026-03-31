@@ -268,6 +268,71 @@
   }
   .toast.show { opacity: 1; }
 
+  /* ── Modal ──────────────────────────────────────────────────────── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: none; align-items: center; justify-content: center; z-index: 200;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 24px; width: 340px; max-height: 80vh;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  .modal-title {
+    font-family: var(--mono); font-size: 14px; font-weight: 600;
+    letter-spacing: 2px; color: var(--text1); margin-bottom: 20px;
+  }
+  .form-group { margin-bottom: 16px; }
+  .form-label {
+    display: block; font-size: 9px; font-weight: 600;
+    letter-spacing: 1.5px; color: var(--text3); margin-bottom: 6px;
+  }
+  .form-input {
+    width: 100%; padding: 12px 14px; border-radius: 8px;
+    background: #060608; border: 1px solid var(--border);
+    color: var(--text1); font-family: var(--mono); font-size: 14px;
+    font-weight: 500; min-height: 48px; outline: none;
+    -webkit-appearance: none; appearance: none;
+  }
+  .form-input:focus { border-color: #333; }
+  .form-input::placeholder { color: var(--text3); }
+  .form-hint { font-size: 10px; color: var(--text3); margin-top: 4px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-btn {
+    flex: 1; padding: 14px; border-radius: 10px; font-family: var(--mono);
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px; min-height: 50px;
+    transition: all 0.15s;
+  }
+  .modal-btn:active { transform: scale(0.97); }
+  .modal-btn-primary {
+    background: var(--green); color: #000; border: none;
+  }
+  .modal-btn-cancel {
+    background: var(--surface2); color: var(--text2); border: 1px solid var(--border);
+  }
+  .modal-btn-danger {
+    background: var(--red-bg); color: var(--red); border: 1px solid #ef444430;
+  }
+
+  /* ── Edit button in detail ──────────────────────────────────────── */
+  .edit-btn {
+    width: 100%; padding: 14px; border-radius: 10px;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text2); font-family: var(--mono); font-size: 11px;
+    font-weight: 700; letter-spacing: 2px; min-height: 50px;
+    transition: all 0.15s; margin-bottom: 12px;
+  }
+  .edit-btn:active { background: #1a1a24; transform: scale(0.97); }
+  .delete-btn {
+    width: 100%; padding: 12px; border-radius: 8px;
+    background: none; border: 1px solid #ef444430;
+    color: var(--red); font-family: var(--mono); font-size: 10px;
+    font-weight: 600; letter-spacing: 1.5px; min-height: 44px;
+    transition: all 0.15s; margin-top: 8px; opacity: 0.6;
+  }
+  .delete-btn:active { opacity: 1; transform: scale(0.97); }
+
   /* ── Responsive: small screens stack detail below ───────────────── */
   @media (max-width: 700px) {
     .main { flex-direction: column; }
@@ -307,6 +372,7 @@
     <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">ALL BINS</button>
     <button class="filter-btn" data-filter="low" onclick="setFilter('low')">⚠ LOW</button>
     <button class="filter-btn" data-filter="critical" onclick="setFilter('critical')">✕ CRITICAL</button>
+    <button class="filter-btn" style="margin-left:auto;color:var(--green);border-color:#10b98130" onclick="showAddBinModal()">+ ADD BIN</button>
   </div>
 
   <!-- Main area -->
@@ -316,6 +382,11 @@
     </div>
     <div class="detail-panel" id="detail"></div>
   </div>
+</div>
+
+<!-- Modal overlay for add/edit -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -524,7 +595,10 @@ function renderDetail() {
       ${detailEvents.length > 0 ? `
         <div class="hist-label">STOCK HISTORY</div>
         <div class="hist-wrap">${sparklineSVG(detailEvents, c.needed_stock, 260, 64)}</div>
-      ` : ''}`;
+      ` : ''}
+
+      <button class="edit-btn" onclick="showEditBinModal(${c.container_id})">✎ EDIT BIN CONFIG</button>
+      <button class="delete-btn" onclick="confirmDeleteBin(${c.container_id})">DELETE BIN</button>`;
 
   } else if (detailTab === 'events') {
     const recent = [...detailEvents].slice(0, 40); // already newest-first from API
@@ -543,13 +617,26 @@ function renderDetail() {
     const cal = detailCalibration || { empty_bin_weight_g: 0, scale_factor: 1, min_detectable_weight_g: 0, rounding_mode: 'round' };
     content += `
       <div class="detail-rows">
-        <div class="d-row"><span class="d-label">EMPTY BIN WEIGHT</span><span class="d-value">${cal.empty_bin_weight_g.toFixed(1)} g</span></div>
-        <div class="d-row"><span class="d-label">SCALE FACTOR</span><span class="d-value">${cal.scale_factor.toFixed(4)}</span></div>
-        <div class="d-row"><span class="d-label">MIN DETECTABLE</span><span class="d-value">${cal.min_detectable_weight_g.toFixed(1)} g</span></div>
-        <div class="d-row"><span class="d-label">ROUNDING</span><span class="d-value">${cal.rounding_mode.toUpperCase()}</span></div>
+        <div class="d-row"><span class="d-label">TARE OFFSET</span><span class="d-value">${cal.empty_bin_weight_g.toFixed(1)} g</span></div>
       </div>
-      <div class="cal-note" style="margin-top:16px">
-        Edit via <code>upsert_container_calibration()</code> in DatabaseOperations.py or add a touch form here.
+      <div style="margin-top:16px">
+        <div class="form-group">
+          <label class="form-label">SCALE FACTOR</label>
+          <input class="form-input" type="number" step="0.01" id="cal-scale" value="${cal.scale_factor}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">MIN DETECTABLE WEIGHT (g)</label>
+          <input class="form-input" type="number" step="0.5" id="cal-min" value="${cal.min_detectable_weight_g}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">ROUNDING MODE</label>
+          <select class="form-input" id="cal-round">
+            <option value="round" ${cal.rounding_mode === 'round' ? 'selected' : ''}>Round</option>
+            <option value="floor" ${cal.rounding_mode === 'floor' ? 'selected' : ''}>Floor</option>
+            <option value="ceil" ${cal.rounding_mode === 'ceil' ? 'selected' : ''}>Ceil</option>
+          </select>
+        </div>
+        <button class="modal-btn modal-btn-primary" style="width:100%" onclick="saveCalibration(${c.container_id})">SAVE CALIBRATION</button>
       </div>`;
   }
 
@@ -689,6 +776,191 @@ async function refresh() {
 // ── Clock ────────────────────────────────────────────────────────────────────
 function updateClock() {
   document.getElementById('clock').textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+}
+
+// ── Modal helpers ────────────────────────────────────────────────────────────
+function openModal(html) {
+  document.getElementById('modal').innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function forceCloseModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+// ── Add Bin Modal ────────────────────────────────────────────────────────────
+function showAddBinModal() {
+  openModal(`
+    <div class="modal-title">+ ADD NEW BIN</div>
+    <div class="form-group">
+      <label class="form-label">BIN ID</label>
+      <input class="form-input" type="number" id="add-bin-id" placeholder="e.g. 2" min="0" max="255">
+      <div class="form-hint">Must match the bin_id byte your STM32 sends</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">ITEM NAME</label>
+      <input class="form-input" type="text" id="add-item-name" placeholder="e.g. Bandages">
+    </div>
+    <div class="form-group">
+      <label class="form-label">WEIGHT PER UNIT (g)</label>
+      <input class="form-input" type="number" step="0.1" id="add-item-weight" placeholder="e.g. 18.0">
+    </div>
+    <div class="form-group">
+      <label class="form-label">NEEDED STOCK (full count)</label>
+      <input class="form-input" type="number" id="add-needed" placeholder="e.g. 20" min="1">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-cancel" onclick="forceCloseModal()">CANCEL</button>
+      <button class="modal-btn modal-btn-primary" onclick="submitAddBin()">ADD BIN</button>
+    </div>
+  `);
+}
+
+async function submitAddBin() {
+  const cid = document.getElementById('add-bin-id').value;
+  const name = document.getElementById('add-item-name').value;
+  const weight = document.getElementById('add-item-weight').value;
+  const needed = document.getElementById('add-needed').value;
+
+  if (!cid || !name || !weight || !needed) {
+    showToast('Fill in all fields');
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/containers/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        container_id: parseInt(cid),
+        item_name: name,
+        item_weight: parseFloat(weight),
+        needed_stock: parseInt(needed)
+      })
+    });
+    const data = await r.json();
+    if (data.error) { showToast('Error: ' + data.error); return; }
+    forceCloseModal();
+    showToast(`Bin ${cid} added`);
+    await loadContainers();
+  } catch (e) {
+    showToast('Network error');
+  }
+}
+
+// ── Edit Bin Modal ───────────────────────────────────────────────────────────
+function showEditBinModal(cid) {
+  const c = containers.find(x => x.container_id === cid);
+  if (!c) return;
+
+  openModal(`
+    <div class="modal-title">EDIT BIN ${String(cid).padStart(2, '0')}</div>
+    <div class="form-group">
+      <label class="form-label">ITEM NAME</label>
+      <input class="form-input" type="text" id="edit-item-name" value="${c.item_name}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">WEIGHT PER UNIT (g)</label>
+      <input class="form-input" type="number" step="0.1" id="edit-item-weight" value="${c.item_weight}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">NEEDED STOCK (full count)</label>
+      <input class="form-input" type="number" id="edit-needed" value="${c.needed_stock}" min="1">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-cancel" onclick="forceCloseModal()">CANCEL</button>
+      <button class="modal-btn modal-btn-primary" onclick="submitEditBin(${cid})">SAVE</button>
+    </div>
+  `);
+}
+
+async function submitEditBin(cid) {
+  const name = document.getElementById('edit-item-name').value;
+  const weight = document.getElementById('edit-item-weight').value;
+  const needed = document.getElementById('edit-needed').value;
+
+  if (!name || !weight || !needed) {
+    showToast('Fill in all fields');
+    return;
+  }
+
+  try {
+    const r = await fetch(`/api/containers/${cid}/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        item_name: name,
+        item_weight: parseFloat(weight),
+        needed_stock: parseInt(needed)
+      })
+    });
+    const data = await r.json();
+    if (data.error) { showToast('Error: ' + data.error); return; }
+    forceCloseModal();
+    showToast(`Bin ${cid} updated`);
+    await loadContainers();
+  } catch (e) {
+    showToast('Network error');
+  }
+}
+
+// ── Delete Bin ───────────────────────────────────────────────────────────────
+function confirmDeleteBin(cid) {
+  openModal(`
+    <div class="modal-title">DELETE BIN ${String(cid).padStart(2, '0')}?</div>
+    <p style="color:var(--text2);font-size:13px;line-height:1.6;margin-bottom:20px">
+      This removes the bin, all its sensor history, and calibration data. This cannot be undone.
+    </p>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-cancel" onclick="forceCloseModal()">CANCEL</button>
+      <button class="modal-btn modal-btn-danger" onclick="deleteBin(${cid})">DELETE</button>
+    </div>
+  `);
+}
+
+async function deleteBin(cid) {
+  try {
+    const r = await fetch(`/api/containers/${cid}`, { method: 'DELETE' });
+    const data = await r.json();
+    if (data.error) { showToast('Error: ' + data.error); return; }
+    forceCloseModal();
+    closeDetail();
+    showToast(`Bin ${cid} deleted`);
+    await loadContainers();
+  } catch (e) {
+    showToast('Network error');
+  }
+}
+
+// ── Save Calibration ─────────────────────────────────────────────────────────
+async function saveCalibration(cid) {
+  const sf = document.getElementById('cal-scale').value;
+  const md = document.getElementById('cal-min').value;
+  const rm = document.getElementById('cal-round').value;
+
+  try {
+    const r = await fetch(`/api/calibration/${cid}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scale_factor: parseFloat(sf),
+        min_detectable_weight_g: parseFloat(md),
+        rounding_mode: rm
+      })
+    });
+    const data = await r.json();
+    if (data.error) { showToast('Error: ' + data.error); return; }
+    showToast('Calibration saved');
+    detailCalibration = await fetchJSON(`/api/calibration/${cid}`);
+    renderDetail();
+  } catch (e) {
+    showToast('Network error');
+  }
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
