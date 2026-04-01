@@ -234,6 +234,15 @@ let loadInFlight = null;
 let loadQueued = false;
 let streamRefreshTimer = null;
 let streamRefreshInFlight = false;
+let interactionLockUntilMs = 0;
+
+function markUserInteraction(ms = 350) {
+  interactionLockUntilMs = Date.now() + ms;
+}
+
+function isUserInteracting() {
+  return Date.now() < interactionLockUntilMs;
+}
 
 const API = '';
 
@@ -492,7 +501,13 @@ async function loadContainers() {
   if (loadInFlight) { loadQueued = true; return loadInFlight; }
   loadInFlight = (async () => {
     const data = await fetchJSON('/api/containers');
-    if (data && Array.isArray(data)) { containers = data; renderStats(); renderGrid(); if (selectedId !== null) renderDetail(); }
+    if (data && Array.isArray(data)) {
+      containers = data;
+      renderStats();
+      renderGrid();
+      // Avoid replacing button DOM while a touch/click is in progress.
+      if (selectedId !== null && !isUserInteracting()) renderDetail();
+    }
   })();
   try { await loadInFlight; } finally {
     loadInFlight = null;
@@ -529,6 +544,10 @@ function queueStreamRefresh() {
   // Coalesce bursts of sensor updates to keep the UI responsive.
   streamRefreshTimer = setTimeout(async () => {
     streamRefreshTimer = null;
+    if (isUserInteracting()) {
+      queueStreamRefresh();
+      return;
+    }
     await runStreamRefresh();
   }, 120);
 }
@@ -621,6 +640,7 @@ function enableTouchDragScroll(el) {
   let isDown = false, startY, scrollTop, moved;
 
   el.addEventListener('touchstart', function(e) {
+    markUserInteraction();
     isDown = true; moved = false; startY = e.touches[0].pageY; scrollTop = el.scrollTop;
   }, { passive: true });
 
@@ -633,6 +653,7 @@ function enableTouchDragScroll(el) {
 
   // Mouse drag (for Pi Connect / VNC)
   el.addEventListener('mousedown', function(e) {
+    markUserInteraction();
     if (e.target.closest('button, input, select, a')) return;
     isDown = true; moved = false; startY = e.pageY; scrollTop = el.scrollTop;
     el.classList.add('dragging');
@@ -641,13 +662,17 @@ function enableTouchDragScroll(el) {
   el.addEventListener('mousemove', function(e) {
     if (!isDown) return;
     const delta = startY - e.pageY;
-    if (Math.abs(delta) > 3) moved = true;
+    if (Math.abs(delta) > 8) moved = true;
     if (moved) { e.preventDefault(); el.scrollTop = scrollTop + delta; }
   });
 
   el.addEventListener('mouseup', function(e) {
     if (moved && isDown) {
-      el.addEventListener('click', function suppress(ev) { ev.stopPropagation(); ev.preventDefault(); }, { capture: true, once: true });
+      el.addEventListener('click', function suppress(ev) {
+        if (ev.target.closest('button, input, select, a')) return;
+        ev.stopPropagation();
+        ev.preventDefault();
+      }, { capture: true, once: true });
     }
     isDown = false; el.classList.remove('dragging');
   });
@@ -657,6 +682,10 @@ function enableTouchDragScroll(el) {
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
+  // Track interaction globally so stream refreshes don't interrupt taps.
+  document.addEventListener('pointerdown', () => markUserInteraction(450), { passive: true });
+  document.addEventListener('pointerup', () => markUserInteraction(180), { passive: true });
+
   updateClock();
   setInterval(updateClock, 1000);
   await loadContainers();
