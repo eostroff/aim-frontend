@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<title>AIM Central — Ambulance Inventory</title>
+<link href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+<div class="app" id="app">
+  <header class="header">
+    <div class="header-left">
+      <div class="logo-cross">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect x="2" y="10" width="24" height="8" rx="2" fill="#ef4444"/>
+          <rect x="10" y="2" width="8" height="24" rx="2" fill="#ef4444"/>
+        </svg>
+      </div>
+      <div>
+        <div class="title">AIM</div>
+        <div class="subtitle">Ambulance Inventory Management</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="clock" id="clock"></span>
+      <button class="refresh-btn" onclick="refresh()">↻ REFRESH</button>
+    </div>
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="filters" id="filters">
+    <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">ALL BINS</button>
+    <button class="filter-btn" data-filter="low" onclick="setFilter('low')">⚠ LOW</button>
+    <button class="filter-btn" data-filter="critical" onclick="setFilter('critical')">✕ CRITICAL</button>
+    <button class="filter-btn" style="margin-left:auto;color:var(--green);border-color:#10b98130" onclick="showAddBinModal()">+ ADD BIN</button>
+  </div>
+
+  <div class="main">
+    <div class="grid-wrap">
+      <div class="grid" id="grid"></div>
+    </div>
+    <div class="detail-panel" id="detail"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="dashboard.js"></script>
+</body>
+</html>

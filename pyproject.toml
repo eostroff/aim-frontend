@@ -1,0 +1,25 @@
+[project]
+name = "aim-frontend"
+version = "0.1.0"
+description = "Real-time inventory dashboard for ambulance supply bins"
+authors = [
+    {name = "Ethan Ostroff", email = "ostroff.e@northeastern.edu"},
+    {name = "Dhruv Dingari", email = "dingari.d@northeastern.edu"},
+]
+dependencies = [
+    "flask>=3.1.3",
+    "python-dotenv>=1.0.0",
+    "python-can>=4.0.0",
+]
+requires-python = "==3.13.*"
+readme = "README.md"
+license = "MIT"
+
+
+[tool.pdm]
+distribution = false
+
+[tool.pdm.scripts]
+start = {cmd = ["python", "-m", "aim_central.main"]}
+setup-env = {cmd = ["python", "scripts/setup_env.py"]}
+clean = {cmd = ["python", "scripts/clean.py"], help = "Remove __pycache__ and *.pyc files. Pass --deep to also remove inventory.db, logs/, and .venv"}

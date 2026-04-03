@@ -1,228 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-<title>AIM Central — Ambulance Inventory</title>
-<link href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { touch-action: manipulation; -webkit-tap-highlight-color: transparent; overflow: hidden; }
-  body {
-    font-family: 'Outfit', sans-serif;
-    background: #060608; color: #c8c8cc;
-    height: 100vh; width: 100vw; overflow: hidden;
-    -webkit-user-select: none; user-select: none;
-  }
-  button { font-family: inherit; cursor: pointer; border: none; -webkit-tap-highlight-color: transparent; }
-  code { font-family: 'Azeret Mono', monospace; font-size: 0.85em; background: #14141a; padding: 1px 6px; border-radius: 4px; }
-
-  :root {
-    --green: #10b981; --yellow: #f59e0b; --red: #ef4444;
-    --green-bg: #10b98115; --yellow-bg: #f59e0b15; --red-bg: #ef444415;
-    --surface: #0c0c10; --surface2: #101016; --border: #18181f;
-    --text1: #e4e4e8; --text2: #88889a; --text3: #44445a;
-    --mono: 'Azeret Mono', monospace; --radius: 12px;
-  }
-
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
-  @keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
-  @keyframes pressDown { 0% { transform: scale(1); } 50% { transform: scale(0.96); } 100% { transform: scale(1); } }
-  .fade-up { animation: fadeUp 0.35s ease both; }
-  .slide-in { animation: slideIn 0.3s ease both; }
-  .tap-flash { animation: pressDown 0.15s ease; }
-
-  .app { display: flex; flex-direction: column; height: 100vh; }
-
-  .header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
-  .header-left { display: flex; align-items: center; gap: 12px; }
-  .logo-cross svg { display: block; }
-  .title { font-size: 19px; font-weight: 700; letter-spacing: 3px; color: var(--text1); font-family: var(--mono); }
-  .subtitle { font-size: 10px; color: var(--text3); letter-spacing: 0.5px; margin-top: 1px; }
-  .header-right { display: flex; align-items: center; gap: 12px; }
-  .clock { font-family: var(--mono); font-size: 13px; color: var(--text3); font-weight: 500; }
-  .refresh-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text2); padding: 10px 20px; border-radius: 8px; font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; min-height: 44px; transition: all 0.15s; }
-  .refresh-btn:active { background: #1a1a24; transform: scale(0.97); }
-
-  .stats { display: flex; gap: 1px; margin: 0; background: var(--border); flex-shrink: 0; }
-  .stat { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 14px 8px; background: var(--surface); }
-  .stat-val { font-size: 26px; font-weight: 700; font-family: var(--mono); color: var(--text1); }
-  .stat-label { font-size: 8px; letter-spacing: 2px; color: var(--text3); margin-top: 3px; font-weight: 600; }
-
-  .filters { display: flex; gap: 1px; background: var(--border); flex-shrink: 0; }
-  .filter-btn { flex: 1; background: var(--surface); color: var(--text3); padding: 12px 8px; font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 1.5px; min-height: 44px; transition: all 0.15s; text-align: center; }
-  .filter-btn.active { background: var(--surface2); color: var(--text1); }
-  .filter-btn:active { background: #1a1a24; }
-
-  .main { display: flex; flex: 1; overflow: hidden; }
-
-  .grid-wrap { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px; -webkit-overflow-scrolling: touch; }
-  .grid-wrap::-webkit-scrollbar { display: none; }
-  .grid-wrap { scrollbar-width: none; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
-
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; border-left: 4px solid var(--text3); transition: all 0.15s; position: relative; min-height: 100px; }
-  .card:active { transform: scale(0.98); }
-  .card.selected { border-color: #333; background: var(--surface2); }
-  .card.level-green { border-left-color: var(--green); }
-  .card.level-yellow { border-left-color: var(--yellow); }
-  .card.level-red { border-left-color: var(--red); }
-
-  .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-  .card-bin { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 2px; color: var(--text3); }
-  .card-badge { font-size: 9px; font-weight: 700; letter-spacing: 1px; padding: 3px 10px; border-radius: 5px; border: 1px solid; }
-  .badge-green { background: var(--green-bg); color: var(--green); border-color: #10b98130; }
-  .badge-yellow { background: var(--yellow-bg); color: var(--yellow); border-color: #f59e0b30; }
-  .badge-red { background: var(--red-bg); color: var(--red); border-color: #ef444430; }
-
-  .card-name { font-size: 15px; font-weight: 600; color: #b0b0bc; margin-bottom: 12px; }
-  .card-body { display: flex; align-items: center; gap: 14px; }
-  .card-gauge svg { display: block; }
-  .card-info { flex: 1; }
-  .stock-row { display: flex; align-items: baseline; gap: 5px; }
-  .stock-current { font-size: 24px; font-weight: 700; font-family: var(--mono); color: var(--text1); }
-  .stock-needed { font-size: 11px; color: var(--text3); font-family: var(--mono); }
-  .weight-line { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-top: 4px; }
-  .sparkline { display: block; margin-top: 6px; }
-
-  .detail-panel { width: 340px; flex-shrink: 0; background: var(--surface); border-left: 1px solid var(--border); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 20px; display: none; }
-  .detail-panel::-webkit-scrollbar { display: none; }
-  .detail-panel { scrollbar-width: none; }
-  .detail-panel.open { display: block; }
-
-  .detail-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-  .detail-bin-id { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--text3); font-weight: 600; }
-  .detail-name { font-size: 18px; font-weight: 700; color: var(--text1); margin-top: 2px; }
-  .close-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text2); width: 44px; height: 44px; border-radius: 8px; font-size: 18px; display: flex; align-items: center; justify-content: center; }
-  .close-btn:active { background: #1a1a24; }
-
-  .detail-gauge { display: flex; justify-content: center; margin: 12px 0 20px; }
-  .detail-rows { display: flex; flex-direction: column; gap: 1px; background: var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
-  .d-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 16px; background: var(--surface); }
-  .d-label { font-size: 9px; font-weight: 600; letter-spacing: 1.5px; color: var(--text3); }
-  .d-value { font-size: 13px; font-weight: 600; font-family: var(--mono); color: #b0b0bc; }
-
-  .adjust-section { margin-bottom: 24px; }
-  .adjust-label { font-size: 9px; font-weight: 600; letter-spacing: 2px; color: var(--text3); margin-bottom: 10px; }
-  .adjust-row { display: flex; align-items: center; gap: 12px; }
-  .adjust-btn { width: 64px; height: 64px; border-radius: 12px; font-family: var(--mono); font-size: 28px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
-  .adjust-btn:active { transform: scale(0.92); }
-  .adjust-minus { background: var(--red-bg); color: var(--red); border: 2px solid #ef444430; }
-  .adjust-plus { background: var(--green-bg); color: var(--green); border: 2px solid #10b98130; }
-  .adjust-display { flex: 1; text-align: center; font-family: var(--mono); font-size: 36px; font-weight: 700; color: var(--text1); }
-  .adjust-max { font-size: 14px; color: var(--text3); }
-
-  .tare-btn { width: 100%; padding: 16px; border-radius: 10px; background: #1a1520; border: 2px solid #f59e0b30; color: var(--yellow); font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 2px; min-height: 54px; transition: all 0.15s; margin-bottom: 16px; }
-  .tare-btn:active { background: #2a2030; transform: scale(0.97); }
-  .tare-btn.sending { animation: pulse 1s infinite; }
-
-  .tab-bar { display: flex; gap: 1px; background: var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 16px; }
-  .tab-btn { flex: 1; background: var(--surface); color: var(--text3); padding: 10px; font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-align: center; min-height: 44px; transition: all 0.15s; }
-  .tab-btn.active { background: var(--surface2); color: var(--text1); }
-  .tab-btn:active { background: #1a1a24; }
-
-  .events-list { max-height: 280px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .events-list::-webkit-scrollbar { display: none; }
-  .events-list { scrollbar-width: none; }
-  .event-row { display: flex; gap: 6px; padding: 8px 4px; font-family: var(--mono); font-size: 10px; border-bottom: 1px solid #0a0a10; }
-  .event-time { flex: 0 0 70px; color: var(--text3); }
-  .event-decision { flex: 1; font-weight: 600; }
-  .event-stock { flex: 0 0 40px; text-align: right; color: var(--text1); font-weight: 600; }
-  .dec-accepted { color: var(--green); }
-  .dec-received { color: var(--text2); }
-  .dec-deferred_unstable { color: var(--yellow); }
-  .dec-rejected_not_tared, .dec-rejected_error, .dec-failed_update { color: var(--red); }
-  .dec-tare_confirmed { color: #3b82f6; }
-
-  .cal-note { padding: 14px; font-size: 11px; color: var(--text3); line-height: 1.6; background: var(--surface); border-radius: 8px; }
-  .hist-label { font-size: 9px; font-weight: 600; letter-spacing: 2px; color: var(--text3); margin-bottom: 8px; }
-  .hist-wrap { background: #060608; border-radius: 8px; padding: 12px; display: flex; justify-content: center; margin-bottom: 20px; }
-
-  .no-data { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text3); font-family: var(--mono); font-size: 13px; letter-spacing: 1px; }
-
-  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a24; border: 1px solid var(--border); color: var(--text1); padding: 12px 24px; border-radius: 10px; font-family: var(--mono); font-size: 12px; font-weight: 600; z-index: 100; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-  .toast.show { opacity: 1; }
-
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 200; }
-  .modal-overlay.open { display: flex; }
-  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; width: 340px; max-height: 80vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .modal::-webkit-scrollbar { display: none; }
-  .modal { scrollbar-width: none; }
-  .modal-title { font-family: var(--mono); font-size: 14px; font-weight: 600; letter-spacing: 2px; color: var(--text1); margin-bottom: 20px; }
-  .form-group { margin-bottom: 16px; }
-  .form-label { display: block; font-size: 9px; font-weight: 600; letter-spacing: 1.5px; color: var(--text3); margin-bottom: 6px; }
-  .form-input { width: 100%; padding: 12px 14px; border-radius: 8px; background: #060608; border: 1px solid var(--border); color: var(--text1); font-family: var(--mono); font-size: 14px; font-weight: 500; min-height: 48px; outline: none; -webkit-appearance: none; appearance: none; }
-  .form-input:focus { border-color: #333; }
-  .form-input::placeholder { color: var(--text3); }
-  .form-hint { font-size: 10px; color: var(--text3); margin-top: 4px; }
-  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
-  .modal-btn { flex: 1; padding: 14px; border-radius: 10px; font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 1.5px; min-height: 50px; transition: all 0.15s; }
-  .modal-btn:active { transform: scale(0.97); }
-  .modal-btn-primary { background: var(--green); color: #000; border: none; }
-  .modal-btn-cancel { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
-  .modal-btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid #ef444430; }
-
-  .edit-btn { width: 100%; padding: 14px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--text2); font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 2px; min-height: 50px; transition: all 0.15s; margin-bottom: 12px; }
-  .edit-btn:active { background: #1a1a24; transform: scale(0.97); }
-  .delete-btn { width: 100%; padding: 12px; border-radius: 8px; background: none; border: 1px solid #ef444430; color: var(--red); font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 1.5px; min-height: 44px; transition: all 0.15s; margin-top: 8px; opacity: 0.6; }
-  .delete-btn:active { opacity: 1; transform: scale(0.97); }
-
-  .dragging { cursor: grabbing !important; }
-
-  @media (max-width: 700px) {
-    .main { flex-direction: column; }
-    .detail-panel { width: 100%; border-left: none; border-top: 1px solid var(--border); max-height: 55vh; }
-    .grid { grid-template-columns: 1fr 1fr; }
-    .card { padding: 12px 14px; }
-  }
-</style>
-</head>
-<body>
-<div class="app" id="app">
-  <header class="header">
-    <div class="header-left">
-      <div class="logo-cross">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-          <rect x="2" y="10" width="24" height="8" rx="2" fill="#ef4444"/>
-          <rect x="10" y="2" width="8" height="24" rx="2" fill="#ef4444"/>
-        </svg>
-      </div>
-      <div>
-        <div class="title">AIM</div>
-        <div class="subtitle">Ambulance Inventory Management</div>
-      </div>
-    </div>
-    <div class="header-right">
-      <span class="clock" id="clock"></span>
-      <button class="refresh-btn" onclick="refresh()">↻ REFRESH</button>
-    </div>
-  </header>
-
-  <div class="stats" id="stats"></div>
-
-  <div class="filters" id="filters">
-    <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">ALL BINS</button>
-    <button class="filter-btn" data-filter="low" onclick="setFilter('low')">⚠ LOW</button>
-    <button class="filter-btn" data-filter="critical" onclick="setFilter('critical')">✕ CRITICAL</button>
-    <button class="filter-btn" style="margin-left:auto;color:var(--green);border-color:#10b98130" onclick="showAddBinModal()">+ ADD BIN</button>
-  </div>
-
-  <div class="main">
-    <div class="grid-wrap">
-      <div class="grid" id="grid"></div>
-    </div>
-    <div class="detail-panel" id="detail"></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
-  <div class="modal" id="modal"></div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
 let containers = [];
 let selectedId = null;
 let currentFilter = 'all';
@@ -236,16 +11,31 @@ let streamRefreshTimer = null;
 let streamRefreshInFlight = false;
 let interactionLockUntilMs = 0;
 
+/**
+ * Records the current time plus a delay as the interaction lock deadline,
+ * preventing stream refreshes from interrupting active user input.
+ * @param {number} ms - Duration in milliseconds to lock out stream refreshes.
+ */
 function markUserInteraction(ms = 350) {
   interactionLockUntilMs = Date.now() + ms;
 }
 
+/**
+ * Returns true if the user is currently interacting (within the lock window).
+ * @returns {boolean}
+ */
 function isUserInteracting() {
   return Date.now() < interactionLockUntilMs;
 }
 
 const API = '';
 
+/**
+ * Fetches a JSON resource from the API and returns the parsed response.
+ * Returns null on network or HTTP errors.
+ * @param {string} url - Path relative to API base.
+ * @returns {Promise<any|null>}
+ */
 async function fetchJSON(url) {
   try {
     const r = await fetch(API + url);
@@ -257,6 +47,12 @@ async function fetchJSON(url) {
   }
 }
 
+/**
+ * Determines the stock level of a bin based on current vs needed stock.
+ * @param {number} current - Current stock count.
+ * @param {number} needed - Full stock count.
+ * @returns {'Red'|'Yellow'|'Green'}
+ */
 function stockLevel(current, needed) {
   if (current === 0) return 'Red';
   if (current <= needed * 0.5) return 'Yellow';
@@ -268,6 +64,13 @@ const badgeClass = { Red: 'badge-red', Yellow: 'badge-yellow', Green: 'badge-gre
 const badgeText = { Red: 'CRITICAL', Yellow: 'LOW', Green: 'STOCKED' };
 const levelColor = { Red: '#ef4444', Yellow: '#f59e0b', Green: '#10b981' };
 
+/**
+ * Generates an SVG gauge arc showing stock percentage for a bin.
+ * @param {number} current - Current stock count.
+ * @param {number} needed - Full stock count.
+ * @param {number} size - Width and height of the SVG in pixels.
+ * @returns {string} SVG markup string.
+ */
 function gaugeArc(current, needed, size) {
   const pct = needed > 0 ? Math.min(100, Math.round((current / needed) * 100)) : 0;
   const sw = 7, r = (size - sw) / 2, cx = size / 2, cy = size / 2;
@@ -289,6 +92,16 @@ function gaugeArc(current, needed, size) {
   </svg>`;
 }
 
+/**
+ * Generates a small SVG sparkline of stock history for a bin,
+ * using only 'accepted' events with a non-null computed_stock.
+ * Returns an empty SVG if fewer than 2 data points are available.
+ * @param {Array<Object>} events - Array of event objects from the API.
+ * @param {number} needed - Full stock count, used to normalize the y-axis.
+ * @param {number} w - Width of the SVG in pixels.
+ * @param {number} h - Height of the SVG in pixels.
+ * @returns {string} SVG markup string.
+ */
 function sparklineSVG(events, needed, w, h) {
   const pts = events.filter(e => e.decision === 'accepted' && e.computed_stock !== null);
   if (pts.length < 2) return `<svg width="${w}" height="${h}"></svg>`;
@@ -312,6 +125,9 @@ function sparklineSVG(events, needed, w, h) {
   </svg>`;
 }
 
+/**
+ * Renders the summary stats bar (total bins, overall %, low count, critical count).
+ */
 function renderStats() {
   const el = document.getElementById('stats');
   const total = containers.length;
@@ -330,6 +146,10 @@ function renderStats() {
     <div class="stat"><span class="stat-val" style="color:${critColor}">${reds}</span><span class="stat-label">CRITICAL</span></div>`;
 }
 
+/**
+ * Renders the bin card grid, filtered by the current filter selection.
+ * Highlights the selected bin if one is active.
+ */
 function renderGrid() {
   const el = document.getElementById('grid');
   const filtered = containers.filter(c => {
@@ -364,6 +184,11 @@ function renderGrid() {
   }).join('');
 }
 
+/**
+ * Renders the detail panel for the currently selected bin.
+ * Shows overview, events, or calibration content based on the active tab.
+ * Hides the panel if no bin is selected.
+ */
 function renderDetail() {
   const el = document.getElementById('detail');
   if (selectedId === null) { el.classList.remove('open'); return; }
@@ -441,6 +266,11 @@ function renderDetail() {
   el.innerHTML = content;
 }
 
+/**
+ * Selects a bin by ID, opening its detail panel and fetching its events and
+ * calibration data. Clicking the same bin again closes the detail panel.
+ * @param {number} id - The container_id of the bin to select.
+ */
 async function selectContainer(id) {
   if (selectedId === id) { closeDetail(); return; }
   selectedId = id; detailTab = 'overview'; detailEvents = []; detailCalibration = null;
@@ -450,19 +280,35 @@ async function selectContainer(id) {
   renderDetail(); renderGrid();
 }
 
+/**
+ * Closes the detail panel and clears the selected bin state.
+ */
 function closeDetail() {
   selectedId = null; detailEvents = []; detailCalibration = null;
   document.getElementById('detail').classList.remove('open'); renderGrid();
 }
 
+/**
+ * Switches the active tab in the detail panel and re-renders it.
+ * @param {'overview'|'events'|'calibration'} t - Tab name to activate.
+ */
 function setTab(t) { detailTab = t; renderDetail(); }
 
+/**
+ * Sets the active grid filter and re-renders the bin grid.
+ * @param {'all'|'low'|'critical'} f - Filter to apply.
+ */
 function setFilter(f) {
   currentFilter = f;
   document.querySelectorAll('.filter-btn').forEach(btn => { btn.classList.toggle('active', btn.dataset.filter === f); });
   renderGrid();
 }
 
+/**
+ * Sends a manual stock adjustment to the API and updates the local state.
+ * @param {number} containerId - The container_id of the bin to adjust.
+ * @param {number} change - Amount to add (positive) or remove (negative).
+ */
 async function adjustStock(containerId, change) {
   try {
     const r = await fetch(`/api/containers/${containerId}/adjust`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ change }) });
@@ -475,6 +321,11 @@ async function adjustStock(containerId, change) {
   } catch (e) { showToast('Network error'); }
 }
 
+/**
+ * Triggers a tare operation on the bin's scale sensor via the API.
+ * Updates calibration data and re-renders the detail panel on success.
+ * @param {number} containerId - The container_id of the bin to tare.
+ */
 async function sendTare(containerId) {
   const btn = document.getElementById('tare-btn');
   if (btn) btn.classList.add('sending');
@@ -491,12 +342,21 @@ async function sendTare(containerId) {
   if (btn) btn.classList.remove('sending');
 }
 
+/**
+ * Displays a brief toast notification at the bottom of the screen.
+ * @param {string} msg - Message to display.
+ */
 function showToast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg; el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 2500);
 }
 
+/**
+ * Fetches the full container list from the API and re-renders the UI.
+ * Debounces concurrent calls: if a load is already in flight, queues one
+ * additional refresh to run after it completes.
+ */
 async function loadContainers() {
   if (loadInFlight) { loadQueued = true; return loadInFlight; }
   loadInFlight = (async () => {
@@ -515,8 +375,16 @@ async function loadContainers() {
   }
 }
 
+/**
+ * Manually refreshes all container data and shows a confirmation toast.
+ */
 async function refresh() { await loadContainers(); showToast('Refreshed'); }
 
+/**
+ * Performs a full data refresh triggered by a stream event.
+ * Also refreshes detail-panel event or calibration data if that tab is active.
+ * Guards against concurrent runs with a flag.
+ */
 async function runStreamRefresh() {
   if (streamRefreshInFlight) return;
   streamRefreshInFlight = true;
@@ -539,6 +407,10 @@ async function runStreamRefresh() {
   }
 }
 
+/**
+ * Schedules a stream refresh with a short debounce delay (120ms) to coalesce
+ * bursts of sensor events. Defers further if the user is currently interacting.
+ */
 function queueStreamRefresh() {
   if (streamRefreshTimer !== null) return;
   // Coalesce bursts of sensor updates to keep the UI responsive.
@@ -552,6 +424,10 @@ function queueStreamRefresh() {
   }, 120);
 }
 
+/**
+ * Opens a Server-Sent Events connection to /api/stream and listens for
+ * 'inventory' events to trigger UI refreshes.
+ */
 function connectStream() {
   if (eventSource) eventSource.close();
   eventSource = new EventSource('/api/stream');
@@ -559,15 +435,35 @@ function connectStream() {
   eventSource.onerror = () => {};
 }
 
+/**
+ * Updates the clock element in the header with the current local time.
+ */
 function updateClock() {
   document.getElementById('clock').textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
 }
 
 // ── Modal helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Opens the modal overlay with the provided HTML content.
+ * @param {string} html - Inner HTML to render inside the modal.
+ */
 function openModal(html) { document.getElementById('modal').innerHTML = html; document.getElementById('modal-overlay').classList.add('open'); }
+
+/**
+ * Closes the modal overlay when clicking the backdrop (not the modal itself).
+ * @param {MouseEvent} e - The click event from the overlay.
+ */
 function closeModal(e) { if (e && e.target !== document.getElementById('modal-overlay')) return; document.getElementById('modal-overlay').classList.remove('open'); }
+
+/**
+ * Force-closes the modal overlay regardless of the event target.
+ */
 function forceCloseModal() { document.getElementById('modal-overlay').classList.remove('open'); }
 
+/**
+ * Opens the Add Bin modal with a form for creating a new bin.
+ */
 function showAddBinModal() {
   openModal(`<div class="modal-title">+ ADD NEW BIN</div>
     <div class="form-group"><label class="form-label">BIN ID</label><input class="form-input" type="number" id="add-bin-id" placeholder="e.g. 2" min="0" max="255"><div class="form-hint">Must match the bin_id byte your STM32 sends</div></div>
@@ -577,6 +473,10 @@ function showAddBinModal() {
     <div class="modal-actions"><button class="modal-btn modal-btn-cancel" onclick="forceCloseModal()">CANCEL</button><button class="modal-btn modal-btn-primary" onclick="submitAddBin()">ADD BIN</button></div>`);
 }
 
+/**
+ * Reads the Add Bin form and POSTs the new bin to the API.
+ * Closes the modal and refreshes the grid on success.
+ */
 async function submitAddBin() {
   const cid = document.getElementById('add-bin-id').value, name = document.getElementById('add-item-name').value;
   const weight = document.getElementById('add-item-weight').value, needed = document.getElementById('add-needed').value;
@@ -589,6 +489,10 @@ async function submitAddBin() {
   } catch (e) { showToast('Network error'); }
 }
 
+/**
+ * Opens the Edit Bin modal pre-populated with the existing bin configuration.
+ * @param {number} cid - The container_id of the bin to edit.
+ */
 function showEditBinModal(cid) {
   const c = containers.find(x => x.container_id === cid); if (!c) return;
   openModal(`<div class="modal-title">EDIT BIN ${String(cid).padStart(2, '0')}</div>
@@ -598,6 +502,11 @@ function showEditBinModal(cid) {
     <div class="modal-actions"><button class="modal-btn modal-btn-cancel" onclick="forceCloseModal()">CANCEL</button><button class="modal-btn modal-btn-primary" onclick="submitEditBin(${cid})">SAVE</button></div>`);
 }
 
+/**
+ * Reads the Edit Bin form and POSTs the updated config to the API.
+ * Closes the modal and refreshes the grid on success.
+ * @param {number} cid - The container_id of the bin being edited.
+ */
 async function submitEditBin(cid) {
   const name = document.getElementById('edit-item-name').value, weight = document.getElementById('edit-item-weight').value, needed = document.getElementById('edit-needed').value;
   if (!name || !weight || !needed) { showToast('Fill in all fields'); return; }
@@ -609,12 +518,21 @@ async function submitEditBin(cid) {
   } catch (e) { showToast('Network error'); }
 }
 
+/**
+ * Opens a confirmation modal before deleting a bin.
+ * @param {number} cid - The container_id of the bin to delete.
+ */
 function confirmDeleteBin(cid) {
   openModal(`<div class="modal-title">DELETE BIN ${String(cid).padStart(2, '0')}?</div>
     <p style="color:var(--text2);font-size:13px;line-height:1.6;margin-bottom:20px">This removes the bin, all its sensor history, and calibration data. This cannot be undone.</p>
     <div class="modal-actions"><button class="modal-btn modal-btn-cancel" onclick="forceCloseModal()">CANCEL</button><button class="modal-btn modal-btn-danger" onclick="deleteBin(${cid})">DELETE</button></div>`);
 }
 
+/**
+ * Sends a DELETE request to remove the bin and all its associated data.
+ * Closes the modal and detail panel, then refreshes the grid on success.
+ * @param {number} cid - The container_id of the bin to delete.
+ */
 async function deleteBin(cid) {
   try {
     const r = await fetch(`/api/containers/${cid}`, { method: 'DELETE' });
@@ -624,6 +542,11 @@ async function deleteBin(cid) {
   } catch (e) { showToast('Network error'); }
 }
 
+/**
+ * Reads the calibration form and POSTs updated calibration settings to the API.
+ * Refreshes the detail panel on success.
+ * @param {number} cid - The container_id of the bin being calibrated.
+ */
 async function saveCalibration(cid) {
   const sf = document.getElementById('cal-scale').value, md = document.getElementById('cal-min').value, rm = document.getElementById('cal-round').value;
   try {
@@ -635,6 +558,12 @@ async function saveCalibration(cid) {
 }
 
 // ── Touch-drag scrolling ─────────────────────────────────────────────────────
+
+/**
+ * Attaches touch and mouse drag-to-scroll behavior to a scrollable element.
+ * Suppresses click events that follow a drag to prevent accidental selections.
+ * @param {HTMLElement} el - The scrollable container element.
+ */
 function enableTouchDragScroll(el) {
   if (!el) return;
   let isDown = false, startY, scrollTop, moved;
@@ -681,6 +610,11 @@ function enableTouchDragScroll(el) {
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Initializes the dashboard: sets up interaction tracking, starts the clock,
+ * loads container data, connects the SSE stream, and enables drag-scroll.
+ */
 async function init() {
   // Track interaction globally so stream refreshes don't interrupt taps.
   document.addEventListener('pointerdown', () => markUserInteraction(450), { passive: true });
@@ -696,6 +630,3 @@ async function init() {
 }
 
 init();
-</script>
-</body>
-</html>
