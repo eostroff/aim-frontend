@@ -34,12 +34,13 @@ PRUNE_DIRS = {".venv", ".git", ".pdm-build", "node_modules"}
 # HELPERS
 # ═════════════════════════════════════════════════════════════════════════════
 
-BOLD  = "\033[1m"
-RED   = "\033[31m"
-GREEN = "\033[32m"
-CYAN  = "\033[36m"
-DIM   = "\033[2m"
-RESET = "\033[0m"
+BOLD   = "\033[1m"
+RED    = "\033[31m"
+GREEN  = "\033[32m"
+YELLOW = "\033[33m"
+CYAN   = "\033[36m"
+DIM    = "\033[2m"
+RESET  = "\033[0m"
 
 if sys.platform == "win32":
     try:
@@ -48,7 +49,7 @@ if sys.platform == "win32":
             ctypes.windll.kernel32.GetStdHandle(-11), 7
         )
     except Exception:
-        BOLD = RED = GREEN = CYAN = DIM = RESET = ""
+        BOLD = RED = GREEN = YELLOW = CYAN = DIM = RESET = ""
 
 
 def remove(path: Path) -> None:
@@ -116,8 +117,16 @@ def main() -> None:
 
         venv = PROJECT_ROOT / ".venv"
         if venv.exists():
-            remove(venv)
-            removed += 1
+            # On Windows the venv's Python executable is locked while PDM is
+            # using it to run this script, so shutil.rmtree will fail with
+            # Access Denied. Detect this and tell the user to remove it manually.
+            running_inside_venv = Path(sys.executable).is_relative_to(venv)
+            if running_inside_venv:
+                print(f"  {YELLOW}skipped{RESET}  {DIM}.venv{RESET}  "
+                      f"{DIM}(in use by this process — delete it manually){RESET}")
+            else:
+                remove(venv)
+                removed += 1
 
     print()
     if removed == 0:
