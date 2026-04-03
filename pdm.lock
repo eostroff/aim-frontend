@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:0bdb5ed25403a583fa21647ff2cc7b56199ecad36388abef4e1f8b27f3eb3c03"
+content_hash = "sha256:e2689711e34d71461a3e1abed6cb42116072f694d7a8a330c37dae8490e0d44f"
 
 [[metadata.targets]]
 requires_python = "==3.13.*"
@@ -125,6 +125,55 @@ files = [
 ]
 
 [[package]]
+name = "packaging"
+version = "26.0"
+requires_python = ">=3.8"
+summary = "Core utilities for Python packages"
+groups = ["default"]
+files = [
+    {file = "packaging-26.0-py3-none-any.whl", hash = "sha256:b36f1fef9334a5588b4166f8bcd26a14e521f2b55e6b9de3aaa80d3ff7a37529"},
+    {file = "packaging-26.0.tar.gz", hash = "sha256:00243ae351a257117b6a241061796684b084ed1c516a08c48a3f7e147a9d80b4"},
+]
+
+[[package]]
+name = "python-can"
+version = "4.6.1"
+requires_python = ">=3.9"
+summary = "Controller Area Network interface module for Python"
+groups = ["default"]
+dependencies = [
+    "packaging>=23.1",
+    "typing-extensions>=3.10.0.0",
+    "wrapt~=1.10",
+]
+files = [
+    {file = "python_can-4.6.1-py3-none-any.whl", hash = "sha256:17f95255868a95108dcfcb90565a684dad32d5a3ebb35afd14f739e18c84ff6c"},
+    {file = "python_can-4.6.1.tar.gz", hash = "sha256:290fea135d04b8504ebff33889cc6d301e2181a54099116609f940825ffe5005"},
+]
+
+[[package]]
+name = "python-dotenv"
+version = "1.2.2"
+requires_python = ">=3.10"
+summary = "Read key-value pairs from a .env file and set them as environment variables"
+groups = ["default"]
+files = [
+    {file = "python_dotenv-1.2.2-py3-none-any.whl", hash = "sha256:1d8214789a24de455a8b8bd8ae6fe3c6b69a5e3d64aa8a8e5d68e694bbcb285a"},
+    {file = "python_dotenv-1.2.2.tar.gz", hash = "sha256:2c371a91fbd7ba082c2c1dc1f8bf89ca22564a087c2c287cd9b662adde799cf3"},
+]
+
+[[package]]
+name = "typing-extensions"
+version = "4.15.0"
+requires_python = ">=3.9"
+summary = "Backported and Experimental Type Hints for Python 3.9+"
+groups = ["default"]
+files = [
+    {file = "typing_extensions-4.15.0-py3-none-any.whl", hash = "sha256:f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548"},
+    {file = "typing_extensions-4.15.0.tar.gz", hash = "sha256:0cea48d173cc12fa28ecabc3b837ea3cf6f38c6d1136f85cbaaf598984861466"},
+]
+
+[[package]]
 name = "werkzeug"
 version = "3.1.8"
 requires_python = ">=3.9"
@@ -136,4 +185,25 @@ dependencies = [
 files = [
     {file = "werkzeug-3.1.8-py3-none-any.whl", hash = "sha256:63a77fb8892bf28ebc3178683445222aa500e48ebad5ec77b0ad80f8726b1f50"},
     {file = "werkzeug-3.1.8.tar.gz", hash = "sha256:9bad61a4268dac112f1c5cd4630a56ede601b6ed420300677a869083d70a4c44"},
+]
+
+[[package]]
+name = "wrapt"
+version = "1.17.3"
+requires_python = ">=3.8"
+summary = "Module for decorators, wrappers and monkey patching."
+groups = ["default"]
+files = [
+    {file = "wrapt-1.17.3-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:a47681378a0439215912ef542c45a783484d4dd82bac412b71e59cf9c0e1cea0"},
+    {file = "wrapt-1.17.3-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:54a30837587c6ee3cd1a4d1c2ec5d24e77984d44e2f34547e2323ddb4e22eb77"},
+    {file = "wrapt-1.17.3-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:16ecf15d6af39246fe33e507105d67e4b81d8f8d2c6598ff7e3ca1b8a37213f7"},
+    {file = "wrapt-1.17.3-cp313-cp313-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:6fd1ad24dc235e4ab88cda009e19bf347aabb975e44fd5c2fb22a3f6e4141277"},
+    {file = "wrapt-1.17.3-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:0ed61b7c2d49cee3c027372df5809a59d60cf1b6c2f81ee980a091f3afed6a2d"},
+    {file = "wrapt-1.17.3-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:423ed5420ad5f5529db9ce89eac09c8a2f97da18eb1c870237e84c5a5c2d60aa"},
+    {file = "wrapt-1.17.3-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:e01375f275f010fcbf7f643b4279896d04e571889b8a5b3f848423d91bf07050"},
+    {file = "wrapt-1.17.3-cp313-cp313-win32.whl", hash = "sha256:53e5e39ff71b3fc484df8a522c933ea2b7cdd0d5d15ae82e5b23fde87d44cbd8"},
+    {file = "wrapt-1.17.3-cp313-cp313-win_amd64.whl", hash = "sha256:1f0b2f40cf341ee8cc1a97d51ff50dddb9fcc73241b9143ec74b30fc4f44f6cb"},
+    {file = "wrapt-1.17.3-cp313-cp313-win_arm64.whl", hash = "sha256:7425ac3c54430f5fc5e7b6f41d41e704db073309acfc09305816bc6a0b26bb16"},
+    {file = "wrapt-1.17.3-py3-none-any.whl", hash = "sha256:7171ae35d2c33d326ac19dd8facb1e82e5fd04ef8c6c0e394d7af55a55051c22"},
+    {file = "wrapt-1.17.3.tar.gz", hash = "sha256:f66eb08feaa410fe4eebd17f2a2c8e2e46d3476e9f8c783daa8e09e0faa666d0"},
 ]

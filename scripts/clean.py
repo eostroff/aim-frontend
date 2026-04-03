@@ -103,10 +103,11 @@ def main() -> None:
 
     # ── Runtime data (--deep only) ────────────────────────────────────────────
     if deep:
-        db = PROJECT_ROOT / "inventory.db"
-        if db.exists():
-            remove(db)
-            removed += 1
+        for db_file in ("inventory.db", "inventory.db-shm", "inventory.db-wal"):
+            db = PROJECT_ROOT / db_file
+            if db.exists():
+                remove(db)
+                removed += 1
 
         logs = PROJECT_ROOT / "logs"
         if logs.exists():

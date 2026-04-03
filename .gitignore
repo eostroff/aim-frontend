@@ -217,4 +217,6 @@ __marimo__/
 
 # Project Specific
 inventory.db
+inventory.db-shm
+inventory.db-wal
 logs/

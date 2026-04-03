@@ -34,7 +34,8 @@ from aim_central.driver.database_operations import (
 # CONFIG
 # ═════════════════════════════════════════════════════════════════════════════
 
-DASHBOARD_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard.html")
+VIEW_DIR = os.path.dirname(os.path.abspath(__file__))
+DASHBOARD_PATH = os.path.join(VIEW_DIR, "dashboard.html")
 
 logger = logging.getLogger("AIM.Flask")
 
@@ -50,6 +51,14 @@ app = Flask(__name__)
 @app.route("/")
 def index():
     return send_file(DASHBOARD_PATH)
+
+@app.route("/dashboard.css")
+def dashboard_css():
+    return send_file(os.path.join(VIEW_DIR, "dashboard.css"))
+
+@app.route("/dashboard.js")
+def dashboard_js():
+    return send_file(os.path.join(VIEW_DIR, "dashboard.js"))
 
 
 # ─── Container list & detail ─────────────────────────────────────────────────
