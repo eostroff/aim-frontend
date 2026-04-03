@@ -56,9 +56,6 @@ step "Checking prerequisites"
 [[ -x "$VENV_PYTHON" ]] \
     || die ".venv not found or Python not executable. Run 'pdm install' first."
 
-[[ -f "$INSTALL_DIR/.env" ]] \
-    || warn ".env not found — the service will use default settings. Run 'pdm run setup-env' to configure."
-
 ok "Prerequisites satisfied"
 
 # ── System user ───────────────────────────────────────────────────────────
@@ -98,9 +95,14 @@ Type=simple
 User=$SERVICE_USER
 Group=$SERVICE_USER
 WorkingDirectory=$INSTALL_DIR
-EnvironmentFile=-$INSTALL_DIR/.env
+Environment=AIM_CAN_CHANNEL=can0
+Environment=AIM_CAN_BITRATE=500000
 Environment=AIM_DB_PATH=/var/lib/aim/inventory.db
+Environment=AIM_FLASK_PORT=3000
 Environment=AIM_LOG_PATH=/var/log/aim/aim.log
+Environment=AIM_LOG_LEVEL=INFO
+Environment=AIM_LOG_MAX_BYTES=1000000
+Environment=AIM_LOG_BACKUP_COUNT=3
 ExecStart=$VENV_PYTHON -m aim_central.main
 Restart=on-failure
 RestartSec=5
