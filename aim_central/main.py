@@ -19,10 +19,14 @@ Usage:
 
 import logging
 
-from aim_central.shared.config import CAN_CHANNEL, CAN_BITRATE, FLASK_PORT
+from aim_central.shared.config import (
+    CAN_CHANNEL, CAN_BITRATE, FLASK_PORT,
+    GPS_PORT, GPS_BAUDRATE, GPS_FENCE_LAT, GPS_FENCE_LON, GPS_FENCE_RADIUS_M,
+)
 from aim_central.shared.logging import setup_logging
 from aim_central.driver.database_operations import get_db, database_init
 from aim_central.logic.can_bridge import start_can_bridge
+from aim_central.logic.gps_fence import start_gps_fence
 from aim_central.view.flask_gui import app
 
 setup_logging()
@@ -91,6 +95,13 @@ if __name__ == "__main__":
     database_init()
     seed_containers()
     start_can_bridge(can_channel=CAN_CHANNEL, bitrate=CAN_BITRATE)
+    start_gps_fence(
+        port=GPS_PORT,
+        baudrate=GPS_BAUDRATE,
+        center_lat=GPS_FENCE_LAT,
+        center_lon=GPS_FENCE_LON,
+        radius_m=GPS_FENCE_RADIUS_M,
+    )
 
     print()
     print("  ┌─────────────────────────────────────────────┐")
@@ -98,7 +109,7 @@ if __name__ == "__main__":
     print("  │  Open http://localhost:3000 on touchscreen   │")
     print("  │                                             │")
     print("  │  CAN bridge runs in background thread       │")
-    print("  │  (disabled gracefully if can0 unavailable)  │")
+    print("  │  GPS fence runs in background thread        │")
     print("  └─────────────────────────────────────────────┘")
     print()
 
