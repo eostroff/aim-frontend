@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Default template for PDM package"
 authors = [
     {name = "Ethan Ostroff", email = "ostroff.e@northeastern.edu"},
+    {name = "Dhruv Dingari", email = "dingari.d@northeastern.edu"},
 ]
 dependencies = [
     "flask>=3.1.3",
