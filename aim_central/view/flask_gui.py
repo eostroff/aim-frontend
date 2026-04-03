@@ -20,6 +20,7 @@ from flask import Flask, jsonify, send_file, request, Response
 from aim_central.shared.config import FLASK_PORT
 from aim_central.shared import events as _events
 from aim_central.shared.events import publish_push_event
+from aim_central.logic.gps_fence import get_fence_enabled, set_fence_enabled
 from aim_central.driver.database_operations import (
     get_db,
     record_sensor_event,
@@ -457,3 +458,24 @@ def api_delete_container(cid):
             return jsonify({"status": "ok", "deleted": cid})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ─── Geofence toggle ─────────────────────────────────────────────────────────
+
+@app.route("/api/geofence")
+def api_geofence_get():
+    """Return the current geofence enabled state."""
+    return jsonify({"enabled": get_fence_enabled()})
+
+
+@app.route("/api/geofence", methods=["POST"])
+def api_geofence_set():
+    """
+    Enable or disable the GPS geofence.
+    POST { "enabled": true|false }
+    """
+    data = request.get_json(force=True)
+    enabled = bool(data.get("enabled", True))
+    set_fence_enabled(enabled)
+    logger.info("Geofence %s via UI.", "enabled" if enabled else "disabled")
+    return jsonify({"enabled": get_fence_enabled()})
