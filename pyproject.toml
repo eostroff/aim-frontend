@@ -1,7 +1,7 @@
 [project]
 name = "aim-frontend"
 version = "0.1.0"
-description = "Default template for PDM package"
+description = "Real-time inventory dashboard for ambulance supply bins"
 authors = [
     {name = "Ethan Ostroff", email = "ostroff.e@northeastern.edu"},
     {name = "Dhruv Dingari", email = "dingari.d@northeastern.edu"},
@@ -13,7 +13,7 @@ dependencies = [
 ]
 requires-python = "==3.13.*"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 
 
 [tool.pdm]
