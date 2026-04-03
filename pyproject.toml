@@ -5,7 +5,11 @@ description = "Default template for PDM package"
 authors = [
     {name = "Ethan Ostroff", email = "ostroff.e@northeastern.edu"},
 ]
-dependencies = ["flask>=3.1.3"]
+dependencies = [
+    "flask>=3.1.3",
+    "python-dotenv>=1.0.0",
+    "python-can>=4.0.0",
+]
 requires-python = "==3.13.*"
 readme = "README.md"
 license = {text = "MIT"}
@@ -17,3 +21,4 @@ distribution = false
 [tool.pdm.scripts]
 start = {cmd = ["python", "-m", "aim_central.main"]}
 setup-env = {cmd = ["python", "scripts/setup_env.py"]}
+clean = {cmd = ["python", "scripts/clean.py"], help = "Remove __pycache__ and *.pyc files. Pass --deep to also remove inventory.db and logs/"}

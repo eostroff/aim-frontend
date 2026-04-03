@@ -87,10 +87,7 @@ cd aim-frontend
 # 2. Install Python dependencies
 pdm install
 
-# 3. Install additional runtime dependencies
-pdm add python-dotenv python-can
-
-# 4. Generate your .env file interactively
+# 3. Generate your .env file interactively
 pdm run setup-env
 ```
 
