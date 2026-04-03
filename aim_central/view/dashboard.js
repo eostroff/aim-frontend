@@ -1,4 +1,5 @@
 let containers = [];
+let fenceEnabled = true;
 let selectedId = null;
 let currentFilter = 'all';
 let detailTab = 'overview';
@@ -380,6 +381,44 @@ async function loadContainers() {
  */
 async function refresh() { await loadContainers(); showToast('Refreshed'); }
 
+// ── Geofence toggle ──────────────────────────────────────────────────────────
+
+/**
+ * Updates the fence button appearance to reflect the current enabled state.
+ */
+function renderFenceBtn() {
+  const btn = document.getElementById('fence-btn');
+  if (!btn) return;
+  btn.classList.toggle('fence-on', fenceEnabled);
+  btn.classList.toggle('fence-off', !fenceEnabled);
+  btn.textContent = fenceEnabled ? '⊙ FENCE ON' : '⊘ FENCE OFF';
+}
+
+/**
+ * Fetches the current geofence state from the server and updates the button.
+ */
+async function loadFenceState() {
+  const data = await fetchJSON('/api/geofence');
+  if (data !== null) { fenceEnabled = data.enabled; renderFenceBtn(); }
+}
+
+/**
+ * Toggles the geofence on or off and updates the button.
+ */
+async function toggleFence() {
+  try {
+    const r = await fetch('/api/geofence', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: !fenceEnabled }),
+    });
+    const data = await r.json();
+    fenceEnabled = data.enabled;
+    renderFenceBtn();
+    showToast(fenceEnabled ? 'Geofence enabled' : 'Geofence disabled');
+  } catch (e) { showToast('Network error'); }
+}
+
 /**
  * Performs a full data refresh triggered by a stream event.
  * Also refreshes detail-panel event or calibration data if that tab is active.
@@ -622,7 +661,7 @@ async function init() {
 
   updateClock();
   setInterval(updateClock, 1000);
-  await loadContainers();
+  await Promise.all([loadContainers(), loadFenceState()]);
   connectStream();
 
   enableTouchDragScroll(document.querySelector('.grid-wrap'));
