@@ -21,4 +21,4 @@ distribution = false
 [tool.pdm.scripts]
 start = {cmd = ["python", "-m", "aim_central.main"]}
 setup-env = {cmd = ["python", "scripts/setup_env.py"]}
-clean = {cmd = ["python", "scripts/clean.py"], help = "Remove __pycache__ and *.pyc files. Pass --deep to also remove inventory.db and logs/"}
+clean = {cmd = ["python", "scripts/clean.py"], help = "Remove __pycache__ and *.pyc files. Pass --deep to also remove inventory.db, logs/, and .venv"}

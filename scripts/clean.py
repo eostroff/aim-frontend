@@ -83,10 +83,11 @@ def main() -> None:
     print()
     print(f"{CYAN}{BOLD}AIM — Clean{RESET}")
     if deep:
-        print(f"  {RED}Deep clean:{RESET} removing build artifacts, database, and logs")
+        print(f"  {RED}Deep clean:{RESET} removing build artifacts, database, logs, and .venv")
+        print(f"  {DIM}Run `pdm install` afterward to restore the virtual environment.{RESET}")
     else:
         print(f"  Removing build artifacts  "
-              f"{DIM}(pass --deep to also remove database and logs){RESET}")
+              f"{DIM}(pass --deep to also remove database, logs, and .venv){RESET}")
     print()
 
     removed = 0
@@ -110,6 +111,11 @@ def main() -> None:
         logs = PROJECT_ROOT / "logs"
         if logs.exists():
             remove(logs)
+            removed += 1
+
+        venv = PROJECT_ROOT / ".venv"
+        if venv.exists():
+            remove(venv)
             removed += 1
 
     print()
