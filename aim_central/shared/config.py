@@ -56,6 +56,18 @@ DB_PATH: str = os.getenv(
 FLASK_PORT: int = int(os.getenv("AIM_FLASK_PORT", "3000"))
 
 # ═════════════════════════════════════════════════════════════════════════════
+# GPS GEOFENCE
+# ═════════════════════════════════════════════════════════════════════════════
+
+GPS_PORT: str = os.getenv("AIM_GPS_PORT", "/dev/ttyACM0")
+GPS_BAUDRATE: int = int(os.getenv("AIM_GPS_BAUDRATE", "9600"))
+
+# Hayden Hall, Northeastern University, Boston MA
+GPS_FENCE_LAT: float = float(os.getenv("AIM_GPS_FENCE_LAT", "42.3396"))
+GPS_FENCE_LON: float = float(os.getenv("AIM_GPS_FENCE_LON", "-71.0882"))
+GPS_FENCE_RADIUS_M: float = float(os.getenv("AIM_GPS_FENCE_RADIUS_M", "200"))
+
+# ═════════════════════════════════════════════════════════════════════════════
 # LOGGING
 # ═════════════════════════════════════════════════════════════════════════════
 
