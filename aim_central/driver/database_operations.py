@@ -38,6 +38,10 @@ def get_db():
 
 def database_init():
     statements = [
+        """CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );""",
         """CREATE TABLE IF NOT EXISTS items (
             item_id INTEGER PRIMARY KEY AUTOINCREMENT,
             item_name TEXT NOT NULL UNIQUE,
@@ -199,6 +203,46 @@ def record_sensor_event(container_id, raw_weight_g, sensor_status, decision,
             return True
     except sqlite3.OperationalError:
         return False
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# DATABASE — SETTINGS
+# ═════════════════════════════════════════════════════════════════════════════
+
+def get_setting(key: str, default: str = None):
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT value FROM settings WHERE key = ?", (key,))
+            row = cur.fetchone()
+            return row["value"] if row else default
+    except sqlite3.OperationalError:
+        return default
+
+
+def set_setting(key: str, value: str) -> None:
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?",
+                (key, value, value),
+            )
+            conn.commit()
+    except sqlite3.OperationalError as e:
+        logger.error("Failed to set setting %s: %s", key, e)
+
+
+def seed_geofence_settings(lat: float, lon: float, radius_m: float) -> None:
+    """Seed geofence defaults from env/config — INSERT OR IGNORE so existing user values are preserved."""
+    try:
+        with get_db() as conn:
+            conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("gps_fence_lat", str(lat)))
+            conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("gps_fence_lon", str(lon)))
+            conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("gps_fence_radius_m", str(radius_m)))
+            conn.commit()
+        logger.info("Geofence settings seeded (lat=%.6f, lon=%.6f, r=%.0fm)", lat, lon, radius_m)
+    except sqlite3.OperationalError as e:
+        logger.error("Failed to seed geofence settings: %s", e)
 
 
 def update_stock_from_weight(container_id, measured_weight_g):

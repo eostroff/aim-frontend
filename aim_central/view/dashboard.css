@@ -40,6 +40,8 @@ code { font-family: 'Azeret Mono', monospace; font-size: 0.85em; background: #14
 .fence-btn:active { background: #1a1a24; transform: scale(0.97); }
 .fence-btn.fence-on  { color: var(--green); border-color: #10b98130; }
 .fence-btn.fence-off { color: var(--red);   border-color: #ef444430; opacity: 0.75; }
+.fence-config-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text3); width: 44px; height: 44px; border-radius: 8px; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+.fence-config-btn:active { background: #1a1a24; transform: scale(0.97); }
 
 .stats { display: flex; gap: 1px; margin: 0; background: var(--border); flex-shrink: 0; }
 .stat { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 14px 8px; background: var(--surface); }

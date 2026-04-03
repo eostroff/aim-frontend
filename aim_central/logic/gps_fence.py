@@ -44,11 +44,24 @@ GEOFENCE_RADIUS_M: float = 200.0  # metres
 # ═════════════════════════════════════════════════════════════════════════════
 
 _fence_enabled: bool = True
+_fence_instance: "GPSFence | None" = None
 
 
 def get_fence_enabled() -> bool:
     """Return whether the geofence is currently active."""
     return _fence_enabled
+
+
+def update_fence_config(lat: float, lon: float, radius_m: float) -> None:
+    """Update the running fence thread's center coordinates and radius in place."""
+    global _fence_instance
+    if _fence_instance is not None:
+        _fence_instance.center_lat = lat
+        _fence_instance.center_lon = lon
+        _fence_instance.radius_m = radius_m
+        logging.getLogger("GPSFence").info(
+            "Geofence config updated — centre=(%.6f, %.6f)  r=%.0fm", lat, lon, radius_m
+        )
 
 
 def set_fence_enabled(enabled: bool) -> None:
@@ -262,6 +275,7 @@ def start_gps_fence(
     running normally.
     """
     logger = logging.getLogger("AIM")
+    global _fence_instance
     fence = GPSFence(
         port=port,
         baudrate=baudrate,
@@ -269,6 +283,7 @@ def start_gps_fence(
         center_lon=center_lon,
         radius_m=radius_m,
     )
+    _fence_instance = fence
     t = threading.Thread(target=fence.run_forever, daemon=True, name="GPS-Fence")
     t.start()
     logger.info("GPS fence thread launched.")

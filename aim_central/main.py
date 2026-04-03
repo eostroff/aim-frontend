@@ -24,7 +24,7 @@ from aim_central.shared.config import (
     GPS_PORT, GPS_BAUDRATE, GPS_FENCE_LAT, GPS_FENCE_LON, GPS_FENCE_RADIUS_M,
 )
 from aim_central.shared.logging import setup_logging
-from aim_central.driver.database_operations import get_db, database_init
+from aim_central.driver.database_operations import get_db, database_init, seed_geofence_settings, get_setting
 from aim_central.logic.can_bridge import start_can_bridge
 from aim_central.logic.gps_fence import start_gps_fence
 from aim_central.view.flask_gui import app
@@ -93,14 +93,15 @@ def seed_containers():
 
 if __name__ == "__main__":
     database_init()
+    seed_geofence_settings(GPS_FENCE_LAT, GPS_FENCE_LON, GPS_FENCE_RADIUS_M)
     seed_containers()
     start_can_bridge(can_channel=CAN_CHANNEL, bitrate=CAN_BITRATE)
     start_gps_fence(
         port=GPS_PORT,
         baudrate=GPS_BAUDRATE,
-        center_lat=GPS_FENCE_LAT,
-        center_lon=GPS_FENCE_LON,
-        radius_m=GPS_FENCE_RADIUS_M,
+        center_lat=float(get_setting("gps_fence_lat", str(GPS_FENCE_LAT))),
+        center_lon=float(get_setting("gps_fence_lon", str(GPS_FENCE_LON))),
+        radius_m=float(get_setting("gps_fence_radius_m", str(GPS_FENCE_RADIUS_M))),
     )
 
     print()

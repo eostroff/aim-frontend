@@ -20,11 +20,13 @@ from flask import Flask, jsonify, send_file, request, Response
 from aim_central.shared.config import FLASK_PORT
 from aim_central.shared import events as _events
 from aim_central.shared.events import publish_push_event
-from aim_central.logic.gps_fence import get_fence_enabled, set_fence_enabled
+from aim_central.logic.gps_fence import get_fence_enabled, set_fence_enabled, update_fence_config
 from aim_central.driver.database_operations import (
     get_db,
     record_sensor_event,
     get_container_calibration,
+    get_setting,
+    set_setting,
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -479,3 +481,46 @@ def api_geofence_set():
     set_fence_enabled(enabled)
     logger.info("Geofence %s via UI.", "enabled" if enabled else "disabled")
     return jsonify({"enabled": get_fence_enabled()})
+
+
+# ─── Geofence configuration ───────────────────────────────────────────────────
+
+@app.route("/api/settings/geofence")
+def api_geofence_config_get():
+    """Return the current geofence center coordinates and radius."""
+    return jsonify({
+        "lat":      float(get_setting("gps_fence_lat",      "42.3396")),
+        "lon":      float(get_setting("gps_fence_lon",      "-71.0882")),
+        "radius_m": float(get_setting("gps_fence_radius_m", "200")),
+    })
+
+
+@app.route("/api/settings/geofence", methods=["POST"])
+def api_geofence_config_set():
+    """
+    Update geofence center and radius.
+    POST { "lat": 42.3396, "lon": -71.0882, "radius_m": 200 }
+    Persists to DB and updates the running fence thread immediately.
+    """
+    data = request.get_json(force=True)
+    try:
+        lat      = float(data["lat"])
+        lon      = float(data["lon"])
+        radius_m = float(data["radius_m"])
+    except (KeyError, TypeError, ValueError):
+        return jsonify({"error": "lat, lon, and radius_m are required numbers"}), 400
+
+    if not (-90 <= lat <= 90):
+        return jsonify({"error": "lat must be between -90 and 90"}), 400
+    if not (-180 <= lon <= 180):
+        return jsonify({"error": "lon must be between -180 and 180"}), 400
+    if radius_m <= 0:
+        return jsonify({"error": "radius_m must be > 0"}), 400
+
+    set_setting("gps_fence_lat",      str(lat))
+    set_setting("gps_fence_lon",      str(lon))
+    set_setting("gps_fence_radius_m", str(radius_m))
+    update_fence_config(lat, lon, radius_m)
+
+    logger.info("Geofence config updated via UI — centre=(%.6f, %.6f)  r=%.0fm", lat, lon, radius_m)
+    return jsonify({"lat": lat, "lon": lon, "radius_m": radius_m})

@@ -1,5 +1,6 @@
 let containers = [];
 let fenceEnabled = true;
+let fenceConfig = { lat: 42.3396, lon: -71.0882, radius_m: 200 };
 let selectedId = null;
 let currentFilter = 'all';
 let detailTab = 'overview';
@@ -403,6 +404,47 @@ async function loadFenceState() {
 }
 
 /**
+ * Fetches the current geofence config (lat/lon/radius) from the server.
+ */
+async function loadFenceConfig() {
+  const data = await fetchJSON('/api/settings/geofence');
+  if (data !== null) { fenceConfig = data; }
+}
+
+/**
+ * Opens the geofence configuration modal pre-populated with current values.
+ */
+function showFenceConfigModal() {
+  openModal(`<div class="modal-title">⚙ GEOFENCE CONFIG</div>
+    <div class="form-group"><label class="form-label">LATITUDE</label><input class="form-input" type="number" step="0.000001" id="fence-lat" value="${fenceConfig.lat}"><div class="form-hint">Decimal degrees (e.g. 42.339600)</div></div>
+    <div class="form-group"><label class="form-label">LONGITUDE</label><input class="form-input" type="number" step="0.000001" id="fence-lon" value="${fenceConfig.lon}"><div class="form-hint">Decimal degrees (e.g. -71.088200)</div></div>
+    <div class="form-group"><label class="form-label">RADIUS (m)</label><input class="form-input" type="number" step="1" min="1" id="fence-radius" value="${fenceConfig.radius_m}"><div class="form-hint">Distance from center in metres</div></div>
+    <div class="modal-actions"><button class="modal-btn modal-btn-cancel" onclick="forceCloseModal()">CANCEL</button><button class="modal-btn modal-btn-primary" onclick="saveFenceConfig()">SAVE</button></div>`);
+}
+
+/**
+ * Reads the fence config form and POSTs updated values to the API.
+ */
+async function saveFenceConfig() {
+  const lat = parseFloat(document.getElementById('fence-lat').value);
+  const lon = parseFloat(document.getElementById('fence-lon').value);
+  const radius_m = parseFloat(document.getElementById('fence-radius').value);
+  if (isNaN(lat) || isNaN(lon) || isNaN(radius_m)) { showToast('Fill in all fields'); return; }
+  try {
+    const r = await fetch('/api/settings/geofence', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lat, lon, radius_m }),
+    });
+    const data = await r.json();
+    if (data.error) { showToast('Error: ' + data.error); return; }
+    fenceConfig = data;
+    forceCloseModal();
+    showToast('Geofence updated');
+  } catch (e) { showToast('Network error'); }
+}
+
+/**
  * Toggles the geofence on or off and updates the button.
  */
 async function toggleFence() {
@@ -661,7 +703,7 @@ async function init() {
 
   updateClock();
   setInterval(updateClock, 1000);
-  await Promise.all([loadContainers(), loadFenceState()]);
+  await Promise.all([loadContainers(), loadFenceState(), loadFenceConfig()]);
   connectStream();
 
   enableTouchDragScroll(document.querySelector('.grid-wrap'));
