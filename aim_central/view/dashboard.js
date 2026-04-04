@@ -317,9 +317,15 @@ async function adjustStock(containerId, change) {
     const data = await r.json();
     if (data.error) { showToast('Error: ' + data.error); return; }
     const c = containers.find(x => x.container_id === containerId);
-    if (c) c.current_stock = data.current_stock;
+    if (c) {
+      c.current_stock = data.current_stock;
+      if (data.item_weight !== undefined) c.item_weight = data.item_weight;
+    }
     renderStats(); renderGrid(); renderDetail();
-    showToast(`Bin ${containerId} → ${data.current_stock} units`);
+    const msg = data.item_weight !== undefined
+      ? `Bin ${containerId} → ${data.current_stock} units  •  ${data.item_weight}g/unit`
+      : `Bin ${containerId} → ${data.current_stock} units`;
+    showToast(msg);
   } catch (e) { showToast('Network error'); }
 }
 

@@ -270,7 +270,17 @@ def api_adjust_stock(cid):
     try:
         with get_db() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT current_stock FROM containers WHERE container_id = ?", (cid,))
+            cur.execute("""SELECT c.current_stock, c.item_id,
+                                  cal.empty_bin_weight_g,
+                                  se.raw_weight_g
+                           FROM containers c
+                           LEFT JOIN container_calibration cal ON cal.container_id = c.container_id
+                           LEFT JOIN (
+                               SELECT container_id, raw_weight_g FROM sensor_events
+                               WHERE container_id = ?
+                               ORDER BY event_id DESC LIMIT 1
+                           ) se ON se.container_id = c.container_id
+                           WHERE c.container_id = ?""", (cid, cid))
             row = cur.fetchone()
             if not row:
                 return jsonify({"error": "not found"}), 404
@@ -279,9 +289,32 @@ def api_adjust_stock(cid):
                 return jsonify({"error": "cannot go below zero"}), 400
             cur.execute("UPDATE containers SET current_stock = ? WHERE container_id = ?",
                         (new_stock, cid))
+
+            # Auto-recalculate item weight from current scale reading when stock > 0
+            recalculated_weight = None
+            raw = row["raw_weight_g"]
+            empty = row["empty_bin_weight_g"]
+            if new_stock > 0 and raw is not None and empty is not None:
+                item_weight = (raw - empty) / new_stock
+                if item_weight > 0:
+                    min_detectable = item_weight * 0.7
+                    cur.execute("UPDATE items SET item_weight = ? WHERE item_id = ?",
+                                (item_weight, row["item_id"]))
+                    cur.execute("""UPDATE container_calibration
+                                   SET min_detectable_weight_g = ?
+                                   WHERE container_id = ?""", (min_detectable, cid))
+                    recalculated_weight = round(item_weight, 2)
+                    logger.info(
+                        "Bin %d: item_weight recalculated to %.2fg, min_detectable=%.2fg",
+                        cid, item_weight, min_detectable,
+                    )
+
             conn.commit()
             publish_push_event("stock", cid)
-            return jsonify({"container_id": cid, "current_stock": new_stock})
+            resp = {"container_id": cid, "current_stock": new_stock}
+            if recalculated_weight is not None:
+                resp["item_weight"] = recalculated_weight
+            return jsonify(resp)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
